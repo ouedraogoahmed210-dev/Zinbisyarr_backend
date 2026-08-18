@@ -1,15 +1,15 @@
 package com.example.demo.service;
 
-import java.math.BigDecimal;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import com.example.demo.model.LignePanier;
 import com.example.demo.model.Panier;
 import com.example.demo.model.Produit;
 import com.example.demo.repository.LignePanierRepository;
 import com.example.demo.repository.PanierRepository;
+import com.example.demo.security.AuthenticatedUser;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
 
 @Service
 public class PanierService {
@@ -28,11 +28,20 @@ public class PanierService {
                 .orElseThrow(() -> new RuntimeException("Panier introuvable avec l'id : " + id));
     }
 
-    public Panier ajouterArticle(Long panierId, Long produitId, int quantite) {
-        Panier panier = trouverParId(panierId);
+    public Panier trouverParIdEtVerifierProprietaire(Long id, AuthenticatedUser user) {
+        Panier panier = trouverParId(id);
+
+        if (!user.estAdmin() && !panier.getClient().getId().equals(user.getUserId())) {
+            throw new RuntimeException("Accès refusé : ce panier ne vous appartient pas.");
+        }
+
+        return panier;
+    }
+
+    public Panier ajouterArticle(Long panierId, Long produitId, int quantite, AuthenticatedUser user) {
+        Panier panier = trouverParIdEtVerifierProprietaire(panierId, user);
         Produit produit = produitService.trouverParId(produitId);
 
-        // Vérifie si le produit est déjà dans le panier, on augmente juste la quantité
         for (LignePanier ligne : panier.getLignes()) {
             if (ligne.getProduit().getId().equals(produitId)) {
                 ligne.setQuantite(ligne.getQuantite() + quantite);
@@ -41,7 +50,6 @@ public class PanierService {
             }
         }
 
-        // Sinon on crée une nouvelle ligne
         LignePanier nouvelleLigne = new LignePanier();
         nouvelleLigne.setPanier(panier);
         nouvelleLigne.setProduit(produit);
@@ -52,21 +60,21 @@ public class PanierService {
         return panierRepository.save(panier);
     }
 
-    public Panier retirerArticle(Long panierId, Long ligneId) {
-        Panier panier = trouverParId(panierId);
+    public Panier retirerArticle(Long panierId, Long ligneId, AuthenticatedUser user) {
+        Panier panier = trouverParIdEtVerifierProprietaire(panierId, user);
         panier.getLignes().removeIf(ligne -> ligne.getId().equals(ligneId));
         return panierRepository.save(panier);
     }
 
-    public BigDecimal calculerTotal(Long panierId) {
-        Panier panier = trouverParId(panierId);
+    public BigDecimal calculerTotal(Long panierId, AuthenticatedUser user) {
+        Panier panier = trouverParIdEtVerifierProprietaire(panierId, user);
         return panier.getLignes().stream()
                 .map(ligne -> ligne.getPrixUnitaire().multiply(BigDecimal.valueOf(ligne.getQuantite())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    public Panier vider(Long panierId) {
-        Panier panier = trouverParId(panierId);
+    public Panier vider(Long panierId, AuthenticatedUser user) {
+        Panier panier = trouverParIdEtVerifierProprietaire(panierId, user);
         panier.getLignes().clear();
         return panierRepository.save(panier);
     }

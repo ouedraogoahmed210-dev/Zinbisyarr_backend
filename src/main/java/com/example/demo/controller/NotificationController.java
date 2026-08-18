@@ -1,19 +1,14 @@
 package com.example.demo.controller;
 
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.example.demo.enums.TypeNotificationEnum;
 import com.example.demo.model.Notification;
+import com.example.demo.security.AuthenticatedUser;
 import com.example.demo.service.NotificationService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/notifications")
@@ -22,9 +17,9 @@ public class NotificationController {
     @Autowired
     private NotificationService notificationService;
 
-    @GetMapping("/client/{clientId}")
-    public List<Notification> listerParClient(@PathVariable Long clientId) {
-        return notificationService.listerParClient(clientId);
+    @GetMapping
+    public List<Notification> listerPourUtilisateur(@AuthenticationPrincipal AuthenticatedUser user) {
+        return notificationService.listerPourUtilisateur(user);
     }
 
     @PostMapping
@@ -35,7 +30,7 @@ public class NotificationController {
     }
 
     @PutMapping("/{id}/lue")
-    public Notification marquerLue(@PathVariable Long id) {
-        return notificationService.marquerLue(id);
+    public Notification marquerLue(@PathVariable Long id, @AuthenticationPrincipal AuthenticatedUser user) {
+        return notificationService.marquerLue(id, user);
     }
 }

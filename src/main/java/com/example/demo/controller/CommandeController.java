@@ -2,8 +2,10 @@ package com.example.demo.controller;
 
 import com.example.demo.enums.StatutCommandeEnum;
 import com.example.demo.model.Commande;
+import com.example.demo.security.AuthenticatedUser;
 import com.example.demo.service.CommandeService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,13 +18,13 @@ public class CommandeController {
     private CommandeService commandeService;
 
     @GetMapping
-    public List<Commande> listerTous() {
-        return commandeService.listerTous();
+    public List<Commande> listerPourUtilisateur(@AuthenticationPrincipal AuthenticatedUser user) {
+        return commandeService.listerPourUtilisateur(user);
     }
 
     @GetMapping("/{id}")
-    public Commande trouverParId(@PathVariable Long id) {
-        return commandeService.trouverParId(id);
+    public Commande trouverParId(@PathVariable Long id, @AuthenticationPrincipal AuthenticatedUser user) {
+        return commandeService.trouverParIdEtVerifierProprietaire(id, user);
     }
 
     @PostMapping
@@ -31,8 +33,8 @@ public class CommandeController {
     }
 
     @PutMapping("/{id}/annuler")
-    public Commande annuler(@PathVariable Long id) {
-        return commandeService.annuler(id);
+    public Commande annuler(@PathVariable Long id, @AuthenticationPrincipal AuthenticatedUser user) {
+        return commandeService.annuler(id, user);
     }
 
     @PutMapping("/{id}/statut")

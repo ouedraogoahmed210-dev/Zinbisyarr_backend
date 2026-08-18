@@ -1,16 +1,16 @@
 package com.example.demo.service;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import com.example.demo.enums.StatutCommandeEnum;
 import com.example.demo.model.Commande;
 import com.example.demo.model.LigneCommande;
 import com.example.demo.model.Produit;
 import com.example.demo.repository.CommandeRepository;
+import com.example.demo.security.AuthenticatedUser;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class CommandeService {
@@ -28,13 +28,29 @@ public class CommandeService {
         return commandeRepository.findAll();
     }
 
+    public List<Commande> listerPourUtilisateur(AuthenticatedUser user) {
+        if (user.estAdmin()) {
+            return commandeRepository.findAll();
+        }
+        return commandeRepository.findByClientId(user.getUserId());
+    }
+
     public Commande trouverParId(Long id) {
         return commandeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Commande introuvable avec l'id : " + id));
     }
 
+    public Commande trouverParIdEtVerifierProprietaire(Long id, AuthenticatedUser user) {
+        Commande commande = trouverParId(id);
+
+        if (!user.estAdmin() && !commande.getClient().getId().equals(user.getUserId())) {
+            throw new RuntimeException("Accès refusé : cette commande ne vous appartient pas.");
+        }
+
+        return commande;
+    }
+
     public Commande valider(Commande commande) {
-        // Vérifie le stock de chaque produit avant de valider
         for (LigneCommande ligne : commande.getLignes()) {
             Produit produit = ligne.getProduit();
             if (produit.getStock() < ligne.getQuantite()) {
@@ -42,7 +58,6 @@ public class CommandeService {
             }
         }
 
-        // Décrémente le stock
         for (LigneCommande ligne : commande.getLignes()) {
             Produit produit = ligne.getProduit();
             produitService.mettreAJourStock(produit.getId(), produit.getStock() - ligne.getQuantite());
@@ -55,8 +70,8 @@ public class CommandeService {
         return commandeRepository.save(commande);
     }
 
-    public Commande annuler(Long id) {
-        Commande commande = trouverParId(id);
+    public Commande annuler(Long id, AuthenticatedUser user) {
+        Commande commande = trouverParIdEtVerifierProprietaire(id, user);
         commande.setStatut(StatutCommandeEnum.ANNULEE);
         return commandeRepository.save(commande);
     }
